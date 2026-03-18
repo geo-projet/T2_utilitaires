@@ -1,0 +1,9 @@
+.env
+CLAUDE.md
+.venv/
+pdf_dir/
+mpk_dir/
+gdb_dir/
+download.log
+__pycache__/
+*.pyc
