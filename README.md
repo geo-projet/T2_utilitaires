@@ -1,6 +1,10 @@
 # T2 Utilitaires — Téléchargement SharePoint
 
-Script Python qui se connecte à un site SharePoint Teams, parcourt récursivement tous les répertoires et télécharge les fichiers `.pdf`, `.mpk` et `.gdb` dans des dossiers locaux dédiés.
+Scripts Python pour télécharger des fichiers depuis un site SharePoint Teams et convertir les formats SIG (`.mpk`, `.gpkg`) en GeoJSON.
+
+- `download_sharepoint.py` — parcourt récursivement la bibliothèque SharePoint et télécharge les `.pdf`, `.mpk`, `.gdb` et `.gpkg` dans des dossiers locaux dédiés
+- `import_mpk.py` — convertit les Map Packages ArcGIS (`.mpk`) en GeoJSON
+- `import_gpkg.py` — convertit les GeoPackages OGC (`.gpkg`) en GeoJSON
 
 ## Prérequis
 
@@ -31,19 +35,31 @@ LIBRARY_NAME=Documents partages
 
 ## Utilisation
 
+### Télécharger depuis SharePoint
+
 ```bash
 python download_sharepoint.py
 ```
 
 Le script affiche un code et un lien. Ouvrir le lien dans un navigateur, entrer le code et se connecter avec son compte Microsoft. Le téléchargement démarre automatiquement après l'authentification.
 
+### Convertir en GeoJSON
+
+```bash
+python import_mpk.py    # .mpk  → geojson_dir/<nom>/<shapefile>.json
+python import_gpkg.py   # .gpkg → geojson_dir/<nom>/<couche>.json
+```
+
+Les deux scripts reprojettent automatiquement les couches en WGS84 (EPSG:4326).
+
 ## Fichiers téléchargés
 
 | Extension | Dossier local | Description |
 |-----------|---------------|-------------|
 | `.pdf`    | `pdf_dir/`    | Documents PDF |
-| `.mpk`    | `mpk_dir/`    | Map Packages ArcGIS |
+| `.mpk`    | `mpk_dir/`    | Map Packages ArcGIS (archive ZIP/7z de Shapefiles) |
 | `.gdb`    | `gdb_dir/`    | File Geodatabases (fichiers ou dossiers) |
+| `.gpkg`   | `gpkg_dir/`   | GeoPackages OGC (SQLite multi-couches) |
 
 Les dossiers `.gdb` (File Geodatabases) sont détectés et téléchargés intégralement avec leur structure interne préservée.
 
@@ -52,9 +68,9 @@ Les dossiers `.gdb` (File Geodatabases) sont détectés et téléchargés intég
 - **Console** : messages INFO (progression, erreurs)
 - **`download.log`** : journal complet DEBUG avec horodatage
 
-## Gestion des collisions
+## Reprise des téléchargements
 
-Si un fichier du même nom existe déjà, un suffixe `_1`, `_2`, etc. est ajouté automatiquement.
+Si un fichier existe déjà localement, il est **passé** (log `SKIP`) — aucun retéléchargement, aucun suffixe `_1`. Cela permet de relancer le script après une interruption pour récupérer uniquement les fichiers manquants, y compris à l'intérieur d'un dossier `.gdb` partiellement téléchargé.
 
 ## Notes
 
