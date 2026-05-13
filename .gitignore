@@ -5,6 +5,7 @@ pdf_dir/
 mpk_dir/
 gdb_dir/
 gpkg_dir/
+geojson_dir/
 download.log
 __pycache__/
 *.pyc
