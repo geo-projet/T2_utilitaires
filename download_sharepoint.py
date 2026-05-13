@@ -31,18 +31,20 @@ LIBRARY_NAME = os.getenv("LIBRARY_NAME", "Documents partages")
 CLIENT_ID = "d3590ed6-52b3-4102-aeff-aad2292ab01c"
 AUTHORITY = "https://login.microsoftonline.com/organizations"
 
-EXTENSIONS_CIBLES = {".pdf", ".mpk", ".gdb"}
+EXTENSIONS_CIBLES = {".pdf", ".mpk", ".gdb", ".gpkg"}
 DOSSIERS_IGNORES = {"Forms", "_private", "_catalogs"}
 
 BASE_DIR = Path(__file__).resolve().parent
 PDF_DIR = BASE_DIR / "pdf_dir"
 MPK_DIR = BASE_DIR / "mpk_dir"
 GDB_DIR = BASE_DIR / "gdb_dir"
+GPKG_DIR = BASE_DIR / "gpkg_dir"
 
 DOSSIER_PAR_EXT = {
     ".pdf": PDF_DIR,
     ".mpk": MPK_DIR,
     ".gdb": GDB_DIR,
+    ".gpkg": GPKG_DIR,
 }
 
 # ---------------------------------------------------------------------------
@@ -137,24 +139,11 @@ def sp_get_bytes(session: requests.Session, endpoint: str) -> bytes:
 # ---------------------------------------------------------------------------
 
 
-def unique_path(dest: Path) -> Path:
-    """Retourne un chemin unique en ajoutant un suffixe _1, _2, … si nécessaire."""
-    if not dest.exists():
-        return dest
-    stem = dest.stem
-    suffix = dest.suffix
-    parent = dest.parent
-    counter = 1
-    while True:
-        candidate = parent / f"{stem}_{counter}{suffix}"
-        if not candidate.exists():
-            return candidate
-        counter += 1
-
-
 def download_file(session: requests.Session, server_relative_url: str, dest: Path) -> None:
-    """Télécharge un fichier SharePoint vers *dest*."""
-    dest = unique_path(dest)
+    """Télécharge un fichier SharePoint vers *dest* (skip si déjà présent)."""
+    if dest.exists():
+        logger.info("SKIP  %s (déjà présent)", dest.relative_to(BASE_DIR))
+        return
     dest.parent.mkdir(parents=True, exist_ok=True)
     encoded_url = quote(server_relative_url, safe="/")
     try:
@@ -163,7 +152,7 @@ def download_file(session: requests.Session, server_relative_url: str, dest: Pat
             f"web/GetFileByServerRelativeUrl('{encoded_url}')/$value",
         )
         dest.write_bytes(data)
-        logger.info("OK  %s", dest.relative_to(BASE_DIR))
+        logger.info("OK    %s", dest.relative_to(BASE_DIR))
     except Exception:
         logger.exception("ERREUR téléchargement → %s", dest)
         if dest.exists():
@@ -261,7 +250,7 @@ def process_folder(session: requests.Session, server_relative_url: str) -> None:
         # Dossier .gdb → File Geodatabase complète
         if sf_name.lower().endswith(".gdb"):
             logger.info("GDB dossier détecté : %s", sf_name)
-            gdb_dest = unique_path(GDB_DIR / sf_name)
+            gdb_dest = GDB_DIR / sf_name
             download_gdb_folder(session, item["ServerRelativeUrl"], gdb_dest)
             continue
 
@@ -280,7 +269,7 @@ def main() -> None:
         logger.error("Variable SITE_URL manquante dans .env.")
         sys.exit(1)
 
-    for d in (PDF_DIR, MPK_DIR, GDB_DIR):
+    for d in (PDF_DIR, MPK_DIR, GDB_DIR, GPKG_DIR):
         d.mkdir(exist_ok=True)
 
     # Authentification
